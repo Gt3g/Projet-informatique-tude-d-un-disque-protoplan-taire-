@@ -67,6 +67,7 @@ static State derivee(const State& s,
         double xi = s[6*i + 0];
         double yi = s[6*i + 1];
         double zi = s[6*i + 2];
+	double vz = s[6*i + 5];
         double mi = nuage.vecteur_de_part[i].masse;
 
         // dx/dt = vx, dy/dt = vy, dz/dt = vz
@@ -78,7 +79,15 @@ static State derivee(const State& s,
         double ax = 0.0, ay = 0.0, az = 0.0;
 
         // ---- Gravitation newtonienne (softened) ----
-        for (int j = 0; j < N; ++j) {
+
+	/*
+        for (int j = 0; j < N; ++j) {      //pour toutes les interractions
+	*/
+
+	int j =0;        // seulement interraction avec l'étoile
+
+
+	
             if (j == i) continue;
             double mj = nuage.vecteur_de_part[j].masse;
 
@@ -88,23 +97,114 @@ static State derivee(const State& s,
 
             double r2    = dx*dx + dy*dy + dz*dz + params.eps * params.eps;
             double r3    = r2 * std::sqrt(r2);          // r² * r = r³
-            double coeff = params.G * mj / r3;
+            double coeff_grav = params.G * mj / r3;
 
-            ax += coeff * dx;
-            ay += coeff * dy;
-            az += coeff * dz;
-        }
+            ax += coeff_grav * dx;
+            ay += coeff_grav * dy;
+            az += coeff_grav * dz;
 
-        // ---- Force d'inertie selon z ----
-        //   pseudo-force centrifuge : -omega² * z
-        //   accélération uniforme   : + a_z
-        az += -params.omega * params.omega * zi + params.a_z;
+	    /*
+        }                                    //pr tt les interractions
+	    */
+	
 
+        //  Force centrifuge : l*l / dist_axe**3
+	    
+	double l = nuage.vecteur_de_part[i].moment_cin;
+	double d_axe_carre = xi*xi + yi*yi;
+	double coeff_cent = l*l / (d_axe_carre * d_axe_carre);
+
+	//ax += coeff_cent * xi;
+	//ay += coeff_cent * yi;
+
+	    
+
+
+
+
+
+        // ---- Force de pression verticale (disque déjà formé) ───────────
+        //
+        // Hypothèse disque mince : z ≪ R_cyl  → r ≈ R_cyl
+        //
+        // Gradient de pression isotherme :
+        //   ρ(R,z) = ρ₀(R) · exp(-z²/2H²)
+        //   a_z,press = -(1/ρ)·∂P/∂z = +c_s²·z/H²  = +Ω_K²(R)·z
+        //
+        // Profil de température irradiée : T(R) = T₀·(R₀/R)^{1/2}
+        //   c_s²(R) = (R_gaz/μ)·T(R)
+        //   H(R)    = c_s/Ω_K  ∝  R^{5/4}   → évasement (flaring) ✓
+        //
+        // Note : valide uniquement pour z ≪ R_cyl (disque formé).
+        //        Pendant l'effondrement (z ~ R), ne pas activer ce terme.
+        // ─────────────────────────────────────────────────────────────────
+
+        constexpr double mu_mol  = 2.0e-3;   // kg/mol (H₂)
+        constexpr double R_gaz   = 8.314;    // J/(mol·K)
+        constexpr double T0_disk = 120.0;    // K à R₀ = 1 UA
+        constexpr double R0_disk = 1.496e11; // 1 UA (m)
+
+        double M_etoile  = nuage.vecteur_de_part[0].masse;
+        double R_cyl_min = params.eps;
+        double R_cyl     = std::max(std::sqrt(d_axe_carre), R_cyl_min);
+
+        // T(R) ∝ R^{-1/2}
+        double T_loc   = T0_disk * std::sqrt(R0_disk / R_cyl);
+
+        // c_s²(R) = (R_gaz/μ)·T
+        double cs2     = (R_gaz / mu_mol) * T_loc;
+
+        // Ω_K²(R) = G·M / R_cyl³
+        double Omega_K2 = params.G * M_etoile / (R_cyl * R_cyl * R_cyl);
+        double Omega_K  = std::sqrt(Omega_K2);
+
+        // H(R) = c_s / Ω_K
+        double H       = std::sqrt(cs2 / Omega_K2);
+
+        // a_z,press = +c_s²·z/H²  =  +Ω_K²·z
+        // (s'oppose à la gravité verticale ; équilibre atteint à |z| ~ H(R))
+        //az += cs2 * 1/(zi / (H * H))/100000;
+
+        // ---- Dissipation verticale résiduelle ───────────────────────────
+        // Amortit les oscillations autour de z=0, assure la convergence
+        // vers l'équilibre hydrostatique H(R) ∝ R^{5/4}.
+        constexpr double f_diss = 0.1;
+        az += -(f_diss * Omega_K) * vz;
+
+
+	
+
+       //Collision dissipation de vz
+
+        
+	//	double gamma_z = 1e-9;
+	//az += -gamma_z * vz;
+
+
+
+
+
+	
+	
         dsdt[6*i + 3] = ax;
         dsdt[6*i + 4] = ay;
         dsdt[6*i + 5] = az;
     }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
     return dsdt;
 }
 
@@ -159,16 +259,16 @@ static State rk4_step(const State& s,
 // ============================================================
 static void write_step(std::fstream& fich, double t,
                         const State& s, int N) {
-    fich << std::fixed << std::setprecision(8);
+    fich << std::scientific << std::setprecision(8);
     for (int i = 0; i < N; ++i) {
-        fich << std::setw(14) << t
+        fich << std::setw(18) << t
              << std::setw(6)  << i
-             << std::setw(16) << s[6*i + 0]   // x
-             << std::setw(16) << s[6*i + 1]   // y
-             << std::setw(16) << s[6*i + 2]   // z
-             << std::setw(16) << s[6*i + 3]   // vx
-             << std::setw(16) << s[6*i + 4]   // vy
-             << std::setw(16) << s[6*i + 5]   // vz
+             << std::setw(20) << s[6*i + 0]   // x
+             << std::setw(20) << s[6*i + 1]   // y
+             << std::setw(20) << s[6*i + 2]   // z
+	  << std::setw(20) << s[6*i + 3]   // vx
+	  << std::setw(20) << s[6*i + 4]   // vy
+	  << std::setw(20) << s[6*i + 5]   // vz
              << "\n";
     }
 }
@@ -204,9 +304,9 @@ void rk4_nuage(Nuage&             nuage,
          << std::setw(16) << "x"
          << std::setw(16) << "y"
          << std::setw(16) << "z"
-         << std::setw(16) << "vx"
-         << std::setw(16) << "vy"
-         << std::setw(16) << "vz"
+      << std::setw(16) << "vx"
+      << std::setw(16) << "vy"
+      << std::setw(16) << "vz"
          << "\n";
     fich << std::string(100, '-') << "\n";
 
@@ -229,6 +329,7 @@ void rk4_nuage(Nuage&             nuage,
         ++step_count;
 
         write_step(fich, t, s, N);
+	std::cout<<t<<endl;
     }
 
     // Mise à jour finale du nuage

@@ -5,7 +5,7 @@
 
 using namespace std;
 
-void Particule::init(double x , double y , double z , double v_x, double v_y , double v_z , double m , double q){
+void Particule::init(double x , double y , double z , double v_x, double v_y , double v_z , double m , double l){
   this->coord_x = x;
   this->coord_y = y;
   this->coord_z = z;
@@ -13,7 +13,7 @@ void Particule::init(double x , double y , double z , double v_x, double v_y , d
   this->vit_y = v_y;
   this->vit_z = v_z;
   this->masse = m;
-  this->charge = q;
+  this->moment_cin = l ;
 
 }
 
@@ -21,7 +21,7 @@ void Particule::afficher(){
   cout<< " x=" << this->coord_x << " y=" << this->coord_y << "z="<< this->coord_z <<endl;
   cout<< " v_x=" << this->vit_x << " v_y=" << this->vit_y << "v_z="<< this->vit_x <<endl;
   cout<< " m=" << this->masse  <<endl;
-  cout<< " q=" << this->charge  <<endl;
+  cout<< " l=" << this->moment_cin  <<endl;
 
 
 }
@@ -31,7 +31,6 @@ double Particule::dist_origine(){
 );
 }
 
-double Particule::dist_axe(){
-  return sqrt((this->coord_x)*(this->coord_x) + (this->coord_y)*(this->coord_y) 
-);
+double Particule::dist_axe_carre(){
+  return (this->coord_x)*(this->coord_x) + (this->coord_y)*(this->coord_y) ;
 }
