@@ -1,27 +1,37 @@
 #ifndef PARTICULE_H
 #define PARTICULE_H
 
+// ================================================================
+//  Classe Particule
+//  Représente une super-particule du nuage moléculaire ou l'étoile.
+//
+//  Convention :
+//    - Unités SI : position en m, vitesse en m/s, masse en kg
+//    - vecteur_de_part[0] désigne toujours l'étoile centrale
+// ================================================================
+class Particule {
+public:
+    double coord_x, coord_y, coord_z;  // position (m)
+    double vit_x,   vit_y,   vit_z;   // vitesse (m/s)
+    double masse;                       // masse (kg)
+    double moment_cin;                  // moment cinétique scalaire (kg·m²/s)
 
-class Particule{
- public:
+    // ── Constructeur par défaut : particule à l'origine, au repos ─
+    Particule();
 
-  double coord_x;
-  double coord_y;
-  double coord_z;
+    // ── Constructeur principal ────────────────────────────────────
+    Particule(double x, double y, double z,
+              double vx, double vy, double vz,
+              double m, double l = 0.0);
 
-  double vit_x;
-  double vit_y;
-  double vit_z;
+    // ── Affichage console (position, vitesse, masse) ──────────────
+    void afficher() const;
 
-  double masse;
+    // ── Distance à l'origine (m) ──────────────────────────────────
+    double dist_origine() const;
 
-  double moment_cin;
-  
-
-  void init(double coord_x , double coord_y , double coord_z ,double vit_x , double vit_y , double vit_z , double masse , double moment_cin );
-  void afficher();
-  double dist_origine();
-  double dist_axe_carre();
+    // ── Carré de la distance à l'axe Z (m²) ──────────────────────
+    double dist_axe_carre() const;
 };
 
 #endif

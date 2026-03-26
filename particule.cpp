@@ -2,35 +2,37 @@
 #include <cmath>
 #include "particule.h"
 
-
 using namespace std;
 
-void Particule::init(double x , double y , double z , double v_x, double v_y , double v_z , double m , double l){
-  this->coord_x = x;
-  this->coord_y = y;
-  this->coord_z = z;
-  this->vit_x = v_x;
-  this->vit_y = v_y;
-  this->vit_z = v_z;
-  this->masse = m;
-  this->moment_cin = l ;
+// ── Constructeur par défaut ──────────────────────────────────────
+Particule::Particule()
+    : coord_x(0.0), coord_y(0.0), coord_z(0.0),
+      vit_x(0.0),   vit_y(0.0),   vit_z(0.0),
+      masse(1.0),   moment_cin(0.0)
+{}
 
+// ── Constructeur principal ───────────────────────────────────────
+Particule::Particule(double x, double y, double z,
+                     double vx, double vy, double vz,
+                     double m, double l)
+    : coord_x(x), coord_y(y), coord_z(z),
+      vit_x(vx),  vit_y(vy),  vit_z(vz),
+      masse(m),   moment_cin(l)
+{}
+
+// ── Affichage console ────────────────────────────────────────────
+void Particule::afficher() const {
+    cout << " x="   << coord_x << " y="   << coord_y << " z="   << coord_z   << endl;
+    cout << " v_x=" << vit_x   << " v_y=" << vit_y   << " v_z=" << vit_z     << endl;
+    cout << " m="   << masse   << " l="   << moment_cin                       << endl;
 }
 
-void Particule::afficher(){
-  cout<< " x=" << this->coord_x << " y=" << this->coord_y << "z="<< this->coord_z <<endl;
-  cout<< " v_x=" << this->vit_x << " v_y=" << this->vit_y << "v_z="<< this->vit_x <<endl;
-  cout<< " m=" << this->masse  <<endl;
-  cout<< " l=" << this->moment_cin  <<endl;
-
-
+// ── Distance à l'origine ─────────────────────────────────────────
+double Particule::dist_origine() const {
+    return sqrt(coord_x*coord_x + coord_y*coord_y + coord_z*coord_z);
 }
 
-double Particule::dist_origine(){
-  return sqrt((this->coord_x)*(this->coord_x) + (this->coord_y)*(this->coord_y) + (this->coord_z)*(this->coord_z)
-);
-}
-
-double Particule::dist_axe_carre(){
-  return (this->coord_x)*(this->coord_x) + (this->coord_y)*(this->coord_y) ;
+// ── Carré de la distance à l'axe Z ──────────────────────────────
+double Particule::dist_axe_carre() const {
+    return coord_x*coord_x + coord_y*coord_y;
 }

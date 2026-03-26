@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cmath>
+#include "params.h"
 #include "nuage.h"
 #include "nuage_solver.h"
 
@@ -9,95 +10,88 @@
 //
 //  Physique :
 //    1. Nuage sphérique uniforme en rotation solide autour de Z
+//       avec beta = E_rot / E_grav = 0.04 (valeur observationnelle)
 //    2. L'auto-gravité effondre le nuage (temps ~ t_ff)
-//    3. Le moment cinétique est conservé
-//    4. L'effondrement selon Z est libre → aplatissement
-//    5. Dans le plan XY, la rotation freine → un disque se forme
+//       + auto-gravité grain↔grain si ENABLE_GRAIN_GRAIN = true
+//    3. Le moment cinétique est conservé → aplatissement en disque
+//    4. Les dissipations (amortissement vertical, circularisation)
+//       sont activées à t = T_DISS_START * t_ff
 //
-//  Paramètres réalistes (cœur de nuage moléculaire) :
-//    M_total  = 1 M_soleil = 1.989e30 kg
-//    R_cloud  = 1000 UA    = 1.496e14 m
-//    beta     = E_rot/|E_grav| = 0.05  (rotation modérée)
-//    v_therm  ~ 200 m/s   (son à ~10 K dans H2)
-//    t_ff     ~ 5600 ans
-//    Simulation : 3 t_ff ~ 17 000 ans
-//    Pas h    : t_ff / 200 ~ 28 ans
-//    Frames   : 600 pas / 2 pas_ecr = 300 frames
+//  Paramètres modifiables dans params.h.
+//  Validation : vérifier conservation de L_z et E_tot
+//               dans diagnostics.fich (sans dissipation).
 // ================================================================
 
 int main() {
 
-    // ── Constantes ───────────────────────────────────────────
-    const double G  = 6.674e-11;
-    const double UA = 1.496e11;    // 1 Unité Astronomique (m)
-    const double AN = 3.156e7;     // 1 an (s)
+    // ── Calcul de la vitesse angulaire initiale ───────────────────
+    // omega = sqrt(beta * 3*G*M / R³)   [rotation solide uniforme]
+    const double omega_0 = std::sqrt(BETA_ROT * 3.0 * G_PHYS * MASSE_ETOILE
+                                     / (RAYON_NUAGE * RAYON_NUAGE * RAYON_NUAGE));
 
-    // ── Paramètres du nuage ──────────────────────────────────
-    const int    N       = 2000;           // super-grains
-    const double M_part = 1;      // 1 M_soleil/100
-    const double r_part = 1;
-    const double R_nuage = 100.0 * UA;  // rayon initial
-    const double M_etoile = 1.989e30;    // 1_M_soleil
-    const double R_etoile = 40 * UA;
-    
+    // ── Calcul du temps de chute libre ───────────────────────────
+    // t_ff = sqrt(3π / (32 G ρ₀))
+    const double rho_0 = MASSE_ETOILE
+                       / (4.0/3.0 * M_PI * RAYON_NUAGE * RAYON_NUAGE * RAYON_NUAGE);
+    const double t_ff  = std::sqrt(3.0 * M_PI / (32.0 * G_PHYS * rho_0));
 
-    // Paramètre de rotation beta = E_rot / |E_grav| = 1
-    // => omega = sqrt( beta *G*M / R³/3 )
-    const double beta    = 4.0;
-    const double omega_0 = std::sqrt(beta  * G * M_etoile
-                                     / (R_nuage * R_nuage * R_nuage)/3.0);
+    // ── Paramètres temporels ─────────────────────────────────────
+    const double t0   = 0.0;
+    const double tEnd = DUREE_EN_TFF * t_ff;
+    const double h    = t_ff / PAS_EN_TFF;
 
-    // Agitation thermique : vitesse du son dans H2 à ~10 K
-    const double v_therm = 0.0;  // m/s
+    // ── Softening gravitationnel ──────────────────────────────────
+    const double eps = EPS_FACTOR * RAYON_NUAGE / std::cbrt((double)N_PARTICULES);
 
-    // ── Calcul du temps de chute libre ───────────────────────
-    const double rho_0 = M_etoile
-                       / (4.0/3.0 * M_PI * R_nuage * R_nuage * R_nuage);
-    const double t_ff  = std::sqrt(3.0 * M_PI / (32.0 * G * rho_0));
+    // ── Affichage des paramètres ──────────────────────────────────
+    std::cout << "=== Simulation formation de disque protoplanétaire ===\n\n";
+    std::cout << "Paramètres physiques :\n";
+    std::cout << "  Masse étoile      : " << MASSE_ETOILE / M_SOLEIL << " M_sun\n";
+    std::cout << "  Masse disque      : " << MASSE_DISK / M_SOLEIL   << " M_sun"
+              << "  (" << FRACTION_DISK*100 << "% M_etoile)\n";
+    std::cout << "  Rayon nuage       : " << RAYON_NUAGE / UA << " UA\n";
+    std::cout << "  beta (rot/grav)   : " << BETA_ROT << "\n";
+    std::cout << "  Temps de chute libre t_ff = "
+              << t_ff / AN << " ans\n";
+    std::cout << "  Auto-gravité g-g  : " << (ENABLE_GRAIN_GRAIN ? "OUI" : "NON") << "\n";
+    std::cout << "  Dissipation dès   : t = " << T_DISS_START << " t_ff = "
+              << T_DISS_START * t_ff / AN << " ans\n\n";
+    std::cout << "Paramètres numériques :\n";
+    std::cout << "  N particules      : " << N_PARTICULES << "\n";
+    std::cout << "  Softening eps     : " << eps / UA << " UA\n";
+    std::cout << "  Simulation de     : " << t0/AN << " à " << tEnd/AN << " ans\n";
+    std::cout << "  Pas de temps h    : " << h/AN << " ans\n\n";
 
-    std::cout << "Temps de chute libre t_ff = "
-              << t_ff << " s = " << t_ff/AN << " ans\n";
-
-    // ── Paramètres temporels ─────────────────────────────────
-    const double t0      = 0.0;
-    const double tEnd    = 15.0 * t_ff;    // 3 t_ff ~ 17 000 ans
-    const double h       = t_ff / 100.0;  // ~ 28 ans par pas
-    const int    pas_ecr = 2;             // 1 frame/2 pas → ~300 frames
-
-    // Softening : fraction du rayon initial moyen inter-particules
-    // r_moy ~ R_cloud / N^(1/3) ~ 1000 UA / 8 = 125 UA
-    const double eps = 0.3 * R_nuage / std::cbrt((double)N);
-
-    // ── Initialisation ───────────────────────────────────────
+    // ── Initialisation du nuage ───────────────────────────────────
     Nuage nuage;
-    nuage.init_nuage_homogene_etoile(N,
-				     M_part,
-				     r_part,
-				     R_nuage,
-				     omega_0,
-				     v_therm,
-				     G,
-				     R_etoile,
-				     M_etoile);
+    nuage.init_nuage_homogene_etoile(N_PARTICULES,
+                                     MASSE_PART,
+                                     RAYON_PART,
+                                     RAYON_NUAGE,
+                                     omega_0,
+                                     V_THERM,
+                                     G_PHYS,
+                                     RAYON_ETOILE,
+                                     MASSE_ETOILE);
 
     std::cout << "Particules créées : "
               << nuage.vecteur_de_part.size() << "\n\n";
 
-    // ── Paramètres physiques ─────────────────────────────────
+    // ── Paramètres du solveur ─────────────────────────────────────
     SimParams params;
-    params.G            = G;
-    params.eps          = eps;
-    params.omega        = 0.0;   // référentiel inertiel
-    params.a_z          = 0.0;
-    params.pas_ecriture = pas_ecr;
+    params.G              = G_PHYS;
+    params.eps            = eps;
+    params.omega          = 0.0;         // référentiel inertiel
+    params.a_z            = 0.0;
+    params.pas_ecriture   = PAS_ECRITURE;
+    params.pas_diag       = PAS_DIAG;
+    params.enable_grain_grain = ENABLE_GRAIN_GRAIN;
 
-    std::cout << "Softening eps = " << eps << " m = "
-              << eps/UA << " UA\n";
-    std::cout << "Simulation de " << t0/AN << " à "
-              << tEnd/AN << " ans, h = " << h/AN << " ans\n\n";
+    // Activation différée des dissipations en secondes
+    params.t_diss_start   = T_DISS_START * t_ff;
 
-    // ── Simulation ───────────────────────────────────────────
-    rk4_nuage(nuage, params, t0, tEnd, h, "evolution_nuage.fich");
+    // ── Simulation ───────────────────────────────────────────────
+    rk4_nuage(nuage, params, t0, tEnd, h, FICHIER_SORTIE, FICHIER_DIAG);
 
     return 0;
 }
