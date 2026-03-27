@@ -28,7 +28,6 @@ void Nuage::affiche_nuage() const {
 //  Algorithme :
 //    1. Place l'étoile à l'origine (indice 0)
 //    2. Tire des positions aléatoires uniformes dans la sphère
-//       (rejection sampling)
 //    3. Exclut la zone R < rayon_etoile (déjà occupée par l'étoile)
 //    4. Applique la rotation solide : vx = -omega*y, vy = +omega*x
 //    5. Ajoute une agitation thermique gaussienne si v_therm > 0
@@ -43,15 +42,15 @@ void Nuage::init_nuage_homogene_etoile(int    nbr_de_part,
                                        double rayon_etoile,
                                        double masse_etoile) {
 
-    // ── Étoile centrale (indice 0) ────────────────────────────────
-    vecteur_de_part.push_back(Particule(0, 0, 0, 0, 0, 0, masse_etoile, 0.0));
+    // -- Étoile centrale (indice 0) ------------------------------
+    vecteur_de_part.push_back(Particule(0, 0, 0, 0, 0, 0, masse_etoile));
 
-    // ── Générateur aléatoire (graine fixe pour reproductibilité) ──
+    // -- Générateur aléatoire (graine fixe pour reproductibilité) --
     mt19937 gen(42);
     uniform_real_distribution<double> dist_u(-1.0, 1.0);
     normal_distribution<double>       gauss(0.0, 1.0);
 
-    // ── Distribution uniforme dans la sphère (rejection sampling) ─
+    // -- Distribution uniforme dans la sphère --------------------
     int placed = 0;
     while (placed < nbr_de_part) {
 
@@ -62,17 +61,19 @@ void Nuage::init_nuage_homogene_etoile(int    nbr_de_part,
         // Rejet si hors de la sphère
         if (x*x + y*y + z*z > rayon_nuage * rayon_nuage) continue;
 
-        // Rejet si trop proche de l'étoile (zone d'exclusion)
+        // Rejet si trop proche de l'étoile
         if (x*x + y*y < rayon_etoile * rayon_etoile)     continue;
 
-        // ── Vitesse de rotation solide autour de Z ────────────────
+        // -- Vitesse de rotation solide autour de Z --------------
         //    v_rot = omega × r_cyl (direction tangentielle)
         //    vx = -omega * y,   vy = +omega * x,   vz = 0
         double vx = -omega_0 * y + v_therm * gauss(gen);
         double vy =  omega_0 * x + v_therm * gauss(gen);
         double vz =               v_therm * gauss(gen);
 
-        vecteur_de_part.push_back(Particule(x, y, z, vx, vy, vz, masse_part, 0.0));
+        vecteur_de_part.push_back(Particule(x, y, z, vx, vy, vz, masse_part));
         ++placed;
     }
+
+    (void)rayon_part;   // paramètre réservé pour une future détection de collisions
 }

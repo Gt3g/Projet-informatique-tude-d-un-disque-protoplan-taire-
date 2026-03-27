@@ -10,12 +10,12 @@
 //
 //  Physique :
 //    1. Nuage sphérique uniforme en rotation solide autour de Z
-//       avec beta = E_rot / E_grav = 0.04 (valeur observationnelle)
+//       avec beta = E_rot / E_grav (valeur observationnelle : 0.02–0.07)
 //    2. L'auto-gravité effondre le nuage (temps ~ t_ff)
 //       + auto-gravité grain↔grain si ENABLE_GRAIN_GRAIN = true
 //    3. Le moment cinétique est conservé → aplatissement en disque
 //    4. Les dissipations (amortissement vertical, circularisation)
-//       sont activées à t = T_DISS_START * t_ff
+//       et la pression PM sont activées à t = T_DISS_START * t_ff
 //
 //  Paramètres modifiables dans params.h.
 //  Validation : vérifier conservation de L_z et E_tot
@@ -54,6 +54,11 @@ int main() {
     std::cout << "  Temps de chute libre t_ff = "
               << t_ff / AN << " ans\n";
     std::cout << "  Auto-gravité g-g  : " << (ENABLE_GRAIN_GRAIN ? "OUI" : "NON") << "\n";
+    std::cout << "  Pression PM       : " << (ENABLE_PRESSURE ? "OUI" : "NON");
+    if (ENABLE_PRESSURE)
+        std::cout << "  (cs=" << CS_PM << " m/s, gamma=" << GAMMA_PM
+                  << ", grille " << N_GRID << "³)";
+    std::cout << "\n";
     std::cout << "  Dissipation dès   : t = " << T_DISS_START << " t_ff = "
               << T_DISS_START * t_ff / AN << " ans\n\n";
     std::cout << "Paramètres numériques :\n";
@@ -81,14 +86,21 @@ int main() {
     SimParams params;
     params.G              = G_PHYS;
     params.eps            = eps;
-    params.omega          = 0.0;         // référentiel inertiel
+    params.omega          = 0.0;
     params.a_z            = 0.0;
     params.pas_ecriture   = PAS_ECRITURE;
     params.pas_diag       = PAS_DIAG;
+    params.f_circ         = F_CIRC;
     params.enable_grain_grain = ENABLE_GRAIN_GRAIN;
-
-    // Activation différée des dissipations en secondes
     params.t_diss_start   = T_DISS_START * t_ff;
+
+    // ── Paramètres de la pression PM ─────────────────────────────
+    params.enable_pressure = ENABLE_PRESSURE;
+    params.n_grid          = N_GRID;
+    params.cs_pm           = CS_PM;
+    params.gamma_pm        = GAMMA_PM;
+    params.r_disk_pm       = R_DISK_PM;
+    params.h_disk_pm       = H_DISK_PM;
 
     // ── Simulation ───────────────────────────────────────────────
     rk4_nuage(nuage, params, t0, tEnd, h, FICHIER_SORTIE, FICHIER_DIAG);

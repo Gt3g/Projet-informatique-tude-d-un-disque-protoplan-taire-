@@ -17,9 +17,9 @@ public:
     // Constructeur par défaut
     Nuage() = default;
 
-    // ── Initialisation ────────────────────────────────────────────
+    // -- Initialisation ------------------------------------------
     // Remplit vecteur_de_part avec nbr_de_part grains + 1 étoile centrale.
-    // Distribution uniforme dans une sphère de rayon rayon_nuage,
+    // Distribution uniforme dans une sphère creuse de rayon externe rayon_nuage et de rayon interne rayon étoile,
     // en rotation solide autour de Z (vitesse angulaire omega_0),
     // avec agitation thermique gaussienne v_therm.
     void init_nuage_homogene_etoile(int    nbr_de_part,
@@ -32,7 +32,7 @@ public:
                                     double rayon_etoile,
                                     double masse_etoile);
 
-    // ── Affichage console (10 premières particules) ───────────────
+    // -- Affichage console (10 premières particules) -------------
     void affiche_nuage() const;
 };
 

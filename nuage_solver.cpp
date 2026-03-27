@@ -65,13 +65,13 @@ static void state_to_nuage(const State& s, Nuage& nuage) {
 //  Pour chaque grain i (i ≠ étoile) :
 //    d/dt [x,y,z]    = [vx, vy, vz]
 //    d/dt [vx,vy,vz] = Σ accélérations gravitationnelles
+//                     + pression PM        (si enable_pressure)
 //                     + amortissement vertical (si t ≥ t_diss_start)
-//                     + circularisation     (si t ≥ t_diss_start)
+//                     + circularisation        (si t ≥ t_diss_start)
 //
 //  Gravitation :
 //    - grain ← étoile : toujours actif
 //    - grain ← grains : actif si params.enable_grain_grain = true
-//      (O(N²), non symétrisé ici car on calcule la force totale sur i)
 // ================================================================
 static State derivee(const State& s,
                      const Nuage& nuage,
@@ -84,6 +84,15 @@ static State derivee(const State& s,
     const bool diss_on    = (t >= params.t_diss_start);
 
     State dsdt(6 * N, 0.0);
+
+    // ── Pression PM (une seule passe O(N + Ng³) avant la boucle) ──
+    // Calcule les accélérations de pression pour tous les grains.
+    // Activée en même temps que les dissipations (après t_diss_start).
+    std::vector<double> ax_press(N, 0.0);
+    std::vector<double> ay_press(N, 0.0);
+    std::vector<double> az_press(N, 0.0);
+    if (diss_on && params.enable_pressure)
+        pression_grille(s, nuage, params, ax_press, ay_press, az_press);
 
     for (int i = 0; i < N; ++i) {
 
@@ -105,15 +114,15 @@ static State derivee(const State& s,
         // Physiquement nécessaire dès que M_disk / M_etoile > quelques %
         // (critère de Toomre, instabilités gravitationnelles).
         if (params.enable_grain_grain) {
-            for (int j = 1; j < N; ++j) {   // j=0 est l'étoile, déjà traitée
+            for (int j = 1; j < N; ++j) {
                 if (j == i) continue;
                 gravite_softened(i, j, s, nuage, params, ax, ay, az);
             }
         }
 
-        // ── Dissipations (activées seulement après t_diss_start) ──
-        // Physique : ces forces modélisent les interactions gaz-disque.
-        // Elles n'ont de sens qu'une fois un disque plan formé.
+        // ── Dissipations + pression (activées après t_diss_start) ─
+        // Ces forces modélisent les interactions gaz-disque.
+        // Elles n'ont de sens physique qu'une fois un disque plan formé.
         if (diss_on) {
             // Amortissement vertical : dissipe v_z dans le plan du disque
             az += amortissement_vertical(s[idx_x(i)], s[idx_y(i)], s[idx_z(i)],
@@ -121,7 +130,14 @@ static State derivee(const State& s,
 
             // Circularisation : amortit la vitesse radiale v_r → 0
             // Conserve L_z, circularise les orbites elliptiques
-            circularisation(i, s, nuage, params, M_etoile, ax, ay, az);
+            circularisation(i, s, params, M_etoile, ax, ay);
+
+            // Pression PM : accélérations pré-calculées sur la grille
+            if (params.enable_pressure) {
+                ax += ax_press[i];
+                ay += ay_press[i];
+                az += az_press[i];
+            }
         }
 
         dsdt[idx_vx(i)] = ax;
@@ -156,10 +172,10 @@ static State rk4_step(const State& s,
                        double t,
                        double h) {
 
-    State k1 = derivee(s,                          nuage, params, t);
-    State k2 = derivee(add(s, scale(h/2.0, k1)),   nuage, params, t + h/2.0);
-    State k3 = derivee(add(s, scale(h/2.0, k2)),   nuage, params, t + h/2.0);
-    State k4 = derivee(add(s, scale(h,     k3)),   nuage, params, t + h);
+    State k1 = derivee(s,                        nuage, params, t);
+    State k2 = derivee(add(s, scale(h/2.0, k1)), nuage, params, t + h/2.0);
+    State k3 = derivee(add(s, scale(h/2.0, k2)), nuage, params, t + h/2.0);
+    State k4 = derivee(add(s, scale(h,     k3)), nuage, params, t + h);
 
     State s_next(s.size());
     for (size_t k = 0; k < s.size(); ++k)
@@ -194,12 +210,12 @@ static Diagnostics compute_diagnostics(const State& s, const Nuage& nuage,
 
     // Énergie cinétique et moment cinétique
     for (int i = 0; i < N; ++i) {
-        double mi  = nuage.vecteur_de_part[i].masse;
-        double vx  = s[idx_vx(i)];
-        double vy  = s[idx_vy(i)];
-        double vz  = s[idx_vz(i)];
-        double x   = s[idx_x(i)];
-        double y   = s[idx_y(i)];
+        double mi = nuage.vecteur_de_part[i].masse;
+        double vx = s[idx_vx(i)];
+        double vy = s[idx_vy(i)];
+        double vz = s[idx_vz(i)];
+        double x  = s[idx_x(i)];
+        double y  = s[idx_y(i)];
 
         E_cin += 0.5 * mi * (vx*vx + vy*vy + vz*vz);
         L_z   += mi * (x * vy - y * vx);

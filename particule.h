@@ -14,23 +14,22 @@ public:
     double coord_x, coord_y, coord_z;  // position (m)
     double vit_x,   vit_y,   vit_z;   // vitesse (m/s)
     double masse;                       // masse (kg)
-    double moment_cin;                  // moment cinétique scalaire (kg·m²/s)
 
-    // ── Constructeur par défaut : particule à l'origine, au repos ─
+    // -- Constructeur par défaut : particule à l'origine, au repos --
     Particule();
 
-    // ── Constructeur principal ────────────────────────────────────
+    // -- Constructeur principal -------------------------------------
     Particule(double x, double y, double z,
               double vx, double vy, double vz,
-              double m, double l = 0.0);
+              double m);
 
-    // ── Affichage console (position, vitesse, masse) ──────────────
+    // -- Affichage console (position, vitesse, masse) --------------
     void afficher() const;
 
-    // ── Distance à l'origine (m) ──────────────────────────────────
+    // -- Distance à l'origine (m) ----------------------------------
     double dist_origine() const;
 
-    // ── Carré de la distance à l'axe Z (m²) ──────────────────────
+    // -- Carré de la distance à l'axe Z (m²) -----------------------
     double dist_axe_carre() const;
 };
 

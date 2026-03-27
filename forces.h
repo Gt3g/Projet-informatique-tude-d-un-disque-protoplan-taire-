@@ -1,4 +1,3 @@
-
 #ifndef FORCES_H
 #define FORCES_H
 
@@ -10,12 +9,11 @@
 //  Calcul des forces exercées sur les particules
 // ================================================================
 
-// ── Gravitation de la particule j_src sur la particule i ─────────
-// Loi de Newton avec softening :
+// ── Gravitation de la particule j sur la particule i ─────────────
+// Loi de Newton avec softening de Plummer :
 //   a = G * m_j * dr / (|dr|² + eps²)^(3/2)
 //
-// Les accélérations ax, ay, az sont incrémentées (+=).
-void gravite_softened(int i, int j_src,
+void gravite_softened(int i, int j,
                       const std::vector<double>& s,
                       const Nuage& nuage,
                       const SimParams& params,
@@ -24,7 +22,7 @@ void gravite_softened(int i, int j_src,
 // ── Amortissement vertical dans le disque ────────────────────────
 // Modèle disque mince isotherme irradié :
 //   T(R) = T0 * sqrt(R0/R)
-//   H(R) = cs(R) / Omega_K(R)   ∝ R^(5/4)
+//   H(R) = cs(R) / Omega_K(R)   ~ R^(5/4)
 //
 // Retourne a_z,diss = -F_DISS_DISK * Omega_K * vz
 // si la particule est dans le disque (|z| < H), 0 sinon.
@@ -36,35 +34,43 @@ double amortissement_vertical(double xi, double yi, double zi,
 // ── Circularisation des orbites ───────────────────────────────────
 //
 //  Modèle physique :
-//    La vitesse d'une particule est décomposée en trois composantes
-//    dans le repère cylindrique local (r̂_cyl, φ̂_cyl, ẑ) :
-//
+//    La vitesse d'une particule est décomposée en coordonnées cylindriques :
 //      v = v_r * r̂_cyl  +  v_φ * φ̂_cyl  +  v_z * ẑ
 //
 //    • v_r > 0 signifie une orbite excentrique (mouvement radial)
-//    • v_φ représente la rotation keplerienne
-//    • v_z est la composante verticale (hors plan)
+//    • v_φ représente la rotation képlérienne
 //
 //  Force d'amortissement de l'excentricité :
-//
 //      F_e = -(1/t_e) * v_r * r̂_cyl
 //      avec   1/t_e = f_circ * Omega_K(R_cyl)
 //
 //  Cette force :
 //    - amortit v_r → 0 : l'orbite devient circulaire
 //    - n'affecte pas v_φ : conserve le moment cinétique L_z
-//    - n'affecte pas v_z : la dissipation verticale est déléguée
-//      à amortissement_vertical()
+//    - n'affecte pas v_z : délégué à amortissement_vertical()
 //
-//  Le rayon cylindrique R_cyl est utilisé (et non le rayon 3D)
-//  car la dynamique keplerienne du disque est dans le plan x-y.
-//
-//  Référence : Papaloizou & Larwood (2000), Tanaka & Ward (2004)
+//  Modifie uniquement ax et ay (pas az).
 void circularisation(int i,
                      const std::vector<double>& s,
-                     const Nuage& nuage,
                      const SimParams& params,
                      double masse_etoile,
-                     double& ax, double& ay, double& az);
+                     double& ax, double& ay);
+
+// ── Pression par méthode Particle-Mesh (PM) ───────────────────────
+//
+//  Calcule en une seule fois les accélérations de pression pour
+//  toutes les particules (sauf l'étoile i=0).
+//  Complexité : O(N + Ng³) au lieu de O(N²).
+//
+//  Paramètres utilisés depuis SimParams :
+//    params.n_grid   : résolution Ng de la grille cubique
+//    params.cs_pm    : vitesse du son (m/s)
+//    params.gamma_pm : indice polytropique
+void pression_grille(const std::vector<double>& s,
+                     const Nuage& nuage,
+                     const SimParams& params,
+                     std::vector<double>& ax_press,
+                     std::vector<double>& ay_press,
+                     std::vector<double>& az_press);
 
 #endif

@@ -31,6 +31,16 @@ struct SimParams {
     // t_diss_start est exprimé en secondes (converti depuis t_ff dans main).
     // Valeur 0.0 → dissipations actives dès le début.
     double t_diss_start = 0.0;   // (s) — initialisé dans main après calcul de t_ff
+
+    // ── Pression Particle-Mesh ────────────────────────────────────
+    // Force de pression calculée sur une grille Ng³ (O(N + Ng³)).
+    // Voir forces.cpp pour le détail de l'algorithme CIC.
+    bool   enable_pressure = ENABLE_PRESSURE;
+    int    n_grid          = N_GRID;   // résolution de la grille
+    double cs_pm           = CS_PM;    // vitesse du son isotherme (m/s)
+    double gamma_pm        = GAMMA_PM; // indice polytropique
+    double r_disk_pm       = R_DISK_PM; // rayon du cylindre de la grille (m)
+    double h_disk_pm       = H_DISK_PM; // demi-hauteur du cylindre (m)
 };
 
 // ================================================================
