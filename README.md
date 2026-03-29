@@ -111,8 +111,8 @@ Le paramètre de softening `ε` est calculé automatiquement :
 Ce choix assure que ε est de l'ordre de la distance inter-particulaire moyenne.
 
 La gravité grain↔grain (boucle O(N²)) est activable via `ENABLE_GRAIN_GRAIN`. Elle est
-physiquement nécessaire dès que la masse du disque représente quelques pourcents de la
-masse stellaire (critère de Toomre).
+physiquement négligeable lorsque la masse du disque représente seulement quelques pourcents de la
+masse stellaire.
 
 #### Pression du gaz (Particle-Mesh)
 
@@ -236,7 +236,6 @@ pression (la pression du gaz est négligeable en dehors du disque).
 ├── nuage_solver.h / .cpp   # Solveur RK4, dérivée du système, diagnostics, I/O
 ├── forces.h / .cpp         # Gravité softened, amortissement vertical, circ., PM
 ├── Makefile                # Compilation, debug, valgrind, plot
-├── visualisation.py        # Script Python de visualisation (à créer, voir §9)
 └── README.md               # Ce fichier
 ```
 
@@ -322,7 +321,7 @@ Il suffit de modifier ce fichier et de relancer `make` pour mettre à jour l'ex�
 
 **Note sur BETA_ROT :** Les observations donnent β ~ 0.02–0.07 pour les cœurs denses réels.
 Une valeur plus grande (0.1–0.5) accélère la formation du disque et est plus pratique pour
-les tests numériques.
+les tests numériques. Dans notre cas l'étoile est déjà formée et le choix d'un β élevé est cohérent.
 
 ### 6.2 Paramètres numériques
 
@@ -419,12 +418,6 @@ Sans dissipation (`T_DISS_START` très grand, `ENABLE_PRESSURE = false`) :
 - `L_z` doit être **conservée** : `dLz_rel` doit rester petit (< ~0.1–1% selon N et h).
 
 Si ces quantités dérivent significativement, réduire le pas de temps (`PAS_EN_TFF` plus grand).
-
-### Cas test : orbite képlérienne circulaire
-
-Avec une seule particule sur une orbite circulaire autour de l'étoile (sans dissipation) :
-- L'orbite doit se refermer exactement après une période.
-- L'énergie mécanique doit être conservée à mieux que ~10⁻⁶ par période (RK4 est d'ordre 4).
 
 ### Avec dissipation
 
