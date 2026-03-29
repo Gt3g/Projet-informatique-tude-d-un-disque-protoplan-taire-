@@ -1,8 +1,7 @@
 # Simulation de formation d'un disque protoplanétaire
 
 Simulation N-corps d'un nuage moléculaire sphérique homogène en rotation s'effondrant sous
-sa propre gravité pour former un disque protoplanétaire, intégrée par un schéma
-Runge-Kutta d'ordre 4.
+sa propre gravité pour former un disque protoplanétaire, intégrée par Runge-Kutta d'ordre 4.
 
 ---
 
@@ -31,9 +30,7 @@ Runge-Kutta d'ordre 4.
    - 6.4 [Pression (méthode PM)](#64-pression-méthode-pm)
 7. [Fichiers de sortie](#7-fichiers-de-sortie)
 8. [Validation](#8-validation)
-9. [Visualisation (Python)](#9-visualisation-python)
-10. [Limitations et pistes d'amélioration](#10-limitations-et-pistes-damélioration)
-11. [Références](#11-références)
+9. [Limitations et pistes d'amélioration](#10-limitations-et-pistes-damélioration)
 
 ---
 
@@ -438,120 +435,8 @@ Avec une seule particule sur une orbite circulaire autour de l'étoile (sans dis
 
 ---
 
-## 9. Visualisation (Python)
 
-Les scripts Python suivants permettent d'analyser les fichiers de sortie.
-
-### Snapshot dans le plan (x, y) au dernier instant
-
-```python
-import numpy as np
-import matplotlib.pyplot as plt
-
-UA = 1.496e11   # m
-AN = 3.156e7    # s
-
-data = np.loadtxt("evolution_nuage.fich", comments="#")
-
-t_last = data[:, 0].max()
-snap   = data[data[:, 0] == t_last]
-
-fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-
-# Vue de dessus (plan du disque)
-axes[0].scatter(snap[1:, 2] / UA, snap[1:, 3] / UA, s=1, c="steelblue", alpha=0.6)
-axes[0].scatter(snap[0, 2] / UA,  snap[0, 3] / UA,  s=50, c="orange", zorder=5, label="Étoile")
-axes[0].set_xlabel("x [UA]")
-axes[0].set_ylabel("y [UA]")
-axes[0].set_title(f"Vue de dessus — t = {t_last/AN:.1f} ans")
-axes[0].set_aspect("equal")
-axes[0].legend()
-
-# Vue de côté (plan x, z)
-axes[1].scatter(snap[1:, 2] / UA, snap[1:, 4] / UA, s=1, c="tomato", alpha=0.6)
-axes[1].set_xlabel("x [UA]")
-axes[1].set_ylabel("z [UA]")
-axes[1].set_title(f"Vue de côté — t = {t_last/AN:.1f} ans")
-axes[1].set_aspect("equal")
-
-plt.tight_layout()
-plt.savefig("snapshot_disque.png", dpi=150)
-plt.show()
-```
-
-### Évolution de l'énergie et de L_z
-
-```python
-import numpy as np
-import matplotlib.pyplot as plt
-
-AN = 3.156e7
-
-diag = np.loadtxt("diagnostics.fich", comments="#")
-t      = diag[:, 0] / AN   # en années
-E_cin  = diag[:, 1]
-E_grav = diag[:, 2]
-E_tot  = diag[:, 3]
-L_z    = diag[:, 4]
-dLz    = diag[:, 5]
-
-fig, axes = plt.subplots(2, 1, figsize=(8, 8), sharex=True)
-
-axes[0].plot(t, E_cin,  label="E_cin")
-axes[0].plot(t, E_grav, label="E_grav")
-axes[0].plot(t, E_tot,  label="E_tot", lw=2, color="black")
-axes[0].set_ylabel("Énergie (J)")
-axes[0].legend()
-axes[0].set_title("Bilan énergétique")
-
-axes[1].plot(t, dLz * 100)
-axes[1].axhline(0, color="gray", lw=0.8)
-axes[1].set_xlabel("t (ans)")
-axes[1].set_ylabel("ΔL_z / |L_z(0)|  (%)")
-axes[1].set_title("Conservation du moment cinétique")
-
-plt.tight_layout()
-plt.savefig("diagnostics.png", dpi=150)
-plt.show()
-```
-
-### Animation temporelle (nécessite matplotlib)
-
-```python
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-
-UA = 1.496e11
-data = np.loadtxt("evolution_nuage.fich", comments="#")
-N_part = int(data[:, 1].max()) + 1
-times  = np.unique(data[:, 0])
-
-fig, ax = plt.subplots(figsize=(6, 6))
-scat = ax.scatter([], [], s=1, c="steelblue")
-star = ax.scatter([], [], s=80, c="orange", zorder=5)
-ax.set_xlim(-200, 200)
-ax.set_ylim(-200, 200)
-ax.set_xlabel("x [UA]")
-ax.set_ylabel("y [UA]")
-
-def update(frame):
-    t = times[frame]
-    snap = data[data[:, 0] == t]
-    scat.set_offsets(snap[1:, 2:4] / UA)
-    star.set_offsets(snap[0, 2:4] / UA)
-    ax.set_title(f"t = {t / 3.156e7:.1f} ans")
-    return scat, star
-
-ani = animation.FuncAnimation(fig, update, frames=len(times),
-                               interval=100, blit=True)
-ani.save("evolution_disque.gif", writer="pillow", dpi=100)
-plt.show()
-```
-
----
-
-## 10. Limitations et pistes d'amélioration
+## 9. Limitations et pistes d'amélioration
 
 ### Limitations actuelles
 
@@ -564,9 +449,6 @@ plt.show()
   Solution : intégrateur adaptatif (RK45, DOP853) ou pas de temps individuel par
   particule.
 
-- **L'étoile est fixe** : dans la réalité, la protoétoile se déplace légèrement sous
-  l'effet de la gravité du disque. L'approximation est valable si M_disk << M_etoile.
-
 - **Grille PM cubique** : la grille PM couvre un cube mais le disque est cylindrique.
   Des particules à grand R_cyl mais z ~ 0 peuvent sortir de la grille sans recevoir de
   force de pression.
@@ -576,21 +458,12 @@ plt.show()
 
 ### Pistes d'amélioration
 
+- Amélioration du stochage de donnés (pipe entre python et c++)
 - Arbre de Barnes-Hut pour la gravité N-corps
 - Intégrateur symplectique (Leapfrog, Yoshida) mieux adapté aux systèmes hamiltoniens
 - Pas de temps adaptatif
 - Loi de pression plus réaliste (EOS avec refroidissement radiatif)
-- Sortie VTK ou HDF5 pour visualisation 3D (ParaView, VisIt)
 - Parallélisation OpenMP des boucles de forces
-- Fichier de configuration externe (libconfig, JSON) pour éviter de recompiler
+
 
 ---
-
-## 11. Références
-
-- Goodman J., Benson P.J., Fuller G.A. (1993), *ApJ* 406 — rotation des cœurs denses protostellaires
-- Papaloizou J.C.B., Larwood J.D. (2000), *MNRAS* 315 — circularisation des orbites dans les disques
-- Tanaka H., Ward W.R. (2004), *ApJ* 602 — migration de type I et forces de marée
-- Fromang S., Nelson R.P. (2006), *A&A* 457 — amortissement vertical dans les disques turbulents
-- Dehnen W. (2001), *MNRAS* 324 — softening gravitationnel optimal pour simulations N-corps
-- Hockney R.W., Eastwood J.W. (1988), *Computer Simulation Using Particles* — méthode Particle-Mesh
